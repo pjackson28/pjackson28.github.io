@@ -4077,11 +4077,13 @@ $document.on( "touchstart click", selector + " [aria-haspopup]", function( event
 		$this = $( this );
 		$parent = $this.parent();
 
-		// Close the submenu if it is open
-		if ( $parent.hasClass( "sm-open" ) ) {
-			menuClose( $parent, true );
-		} else if ( isTouchstart ) {
+		// Open the submenu if it is closed
+		if ( !$parent.hasClass( "sm-open" ) ) {
 			$this.trigger( "focusin" );
+
+		// Close the open submenu for a touch event
+		} else if ( isTouchstart ) {
+			menuClose( $parent, true );
 		}
 	}
 });
