@@ -4069,17 +4069,21 @@ $document.on( "mouseleave", selector + " .menu", function( event ) {
 // Touchscreen "touches" on menu items should close the sub-menu if it is open
 $document.on( "touchstart click", selector + " [aria-haspopup]", function( event ) {
 	var isTouchstart = event.type === "touchstart",
+		$this,
 		$parent;
 
 	// Ignored middle and right mouse buttons
 	if ( isTouchstart || event.which === 1 ) {
 		event.preventDefault();
 		if ( isTouchstart ) {
-			$parent = $( this.parentNode );
+			$this = $( this );
+			$parent = $this.parent();
 
 			// Close the submenu if it is open
 			if ( $parent.hasClass( "sm-open" ) ) {
 				menuClose( $parent, true );
+			} else {
+				$this.trigger( "focusin" );
 			}
 		}
 	}
