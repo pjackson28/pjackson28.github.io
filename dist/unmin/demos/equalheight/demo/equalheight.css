@@ -1,0 +1,16 @@
+.wb-eqht section {
+  display: inline-block;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .wb-eqht section {
+    width: 49%;
+  }
+}
+
+@media (min-width: 1200px) {
+  .wb-eqht section {
+    width: 33%;
+  }
+}
