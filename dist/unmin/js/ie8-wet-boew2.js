@@ -3746,22 +3746,17 @@ $document.on( "touchstart click", selector + " [aria-haspopup]", function( event
 	}
 });
 
-// Clicks outside of menus should close any open menus
-$document.on( "click", function( event ) {
+// Clicks and touches outside of menus should close any open menus
+$document.on( "click touchstart", function( event ) {
 	var $openMenus;
 
 	// Ignore middle and right mouse buttons
-	if ( event.which === 1 ) {
+	if ( event.type === "touchstart" || event.which === 1 ) {
 		$openMenus = $( selector + " .sm-open" );
-		if ( $openMenus.length !== 0 ) {
-			$openMenus = $openMenus.not(
-					$( event.target )
-						.closest( selector )
-							.find( ".sm-open" )
-				);
-			if ( $openMenus.length !== 0) {
-				menuClose( $openMenus, true );
-			}
+		if ( $openMenus.length !== 0 &&
+			$( event.target ).closest( selector ).length === 0 ) {
+
+			menuClose( $openMenus, true );
 		}
 	}
 });
