@@ -3736,7 +3736,7 @@ $document.on( "touchstart click", selector + " [aria-haspopup]", function( event
 		$parent = $this.parent();
 
 		// Close the submenu if it is open
-		if ( !$parent.hasClass( "sm-open" ) ) {
+		if ( $parent.hasClass( "sm-open" ) ) {
 			menuClose( $parent, true );
 		} else if ( isTouchstart ) {
 			$this.trigger( "focusin" );
