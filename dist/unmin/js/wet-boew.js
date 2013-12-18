@@ -4066,19 +4066,40 @@ $document.on( "mouseleave", selector + " .menu", function( event ) {
 	menuReset( $( event.currentTarget ).closest( ".wb-menu" ) );
 });
 
-// Panel clicks on menu items should open submenus
-$document.on( "click vclick", selector + " [aria-haspopup]", function( event ) {
-	var which = event.which,
-		$this;
-window.alert( event.type + ", " + which );
-	if ( !which || which === 1 ) {
+// Touchscreen "touches" on menu items should close the sub-menu if it is open
+$document.on( "touchstart click", selector + " [aria-haspopup]", function( event ) {
+	var isTouchstart = event.type === "touchstart",
+		$parent;
+
+	// Ignored middle and right mouse buttons
+	if ( isTouchstart || event.which === 1 ) {
 		event.preventDefault();
-		if ( !which ) {
-			$this = $( this );
-			if ( $( "#wb-sm" ).find( ".nav-close" ).is( ":visible" ) ) {
-				$this.trigger( "focusin" );
-			} else if ( !which ) {
-				menuReset( $this, true );
+		if ( isTouchstart ) {
+			$parent = $( this.parentNode );
+
+			// Close the submenu if it is open
+			if ( $parent.hasClass( "sm-open" ) ) {
+				menuClose( $parent, true );
+			}
+		}
+	}
+});
+
+// Clicks outside of menus should close any open menus
+$document.on( "click", function( event ) {
+	var $openMenus;
+
+	// Ignored middle and right mouse buttons
+	if ( event.which === 1 ) {
+		$openMenus = $( selector + " .sm-open" );
+		if ( $openMenus.length !== 0 ) {
+			$openMenus = $openMenus.not(
+					$( event.target )
+						.closest( selector )
+							.find( ".sm-open" )
+				);
+			if ( $openMenus.length !== 0) {
+				menuClose( $openMenus, true );
 			}
 		}
 	}
