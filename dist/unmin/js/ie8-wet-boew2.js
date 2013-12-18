@@ -3727,22 +3727,19 @@ $document.on( "mouseleave", selector + " .menu", function( event ) {
 // Touchscreen "touches" on menu items should close the sub-menu if it is open
 $document.on( "touchstart click", selector + " [aria-haspopup]", function( event ) {
 	var isTouchstart = event.type === "touchstart",
-		$this,
-		$parent;
+		$this, $parent;
 
-	// Ignored middle and right mouse buttons
+	// Ignore middle and right mouse buttons
 	if ( isTouchstart || event.which === 1 ) {
 		event.preventDefault();
-		if ( isTouchstart ) {
-			$this = $( this );
-			$parent = $this.parent();
+		$this = $( this );
+		$parent = $this.parent();
 
-			// Close the submenu if it is open
-			if ( $parent.hasClass( "sm-open" ) ) {
-				menuClose( $parent, true );
-			} else {
-				$this.trigger( "focusin" );
-			}
+		// Close the submenu if it is open
+		if ( !$parent.hasClass( "sm-open" ) ) {
+			menuClose( $parent, true );
+		} else if ( isTouchstart ) {
+			$this.trigger( "focusin" );
 		}
 	}
 });
@@ -3751,7 +3748,7 @@ $document.on( "touchstart click", selector + " [aria-haspopup]", function( event
 $document.on( "click", function( event ) {
 	var $openMenus;
 
-	// Ignored middle and right mouse buttons
+	// Ignore middle and right mouse buttons
 	if ( event.which === 1 ) {
 		$openMenus = $( selector + " .sm-open" );
 		if ( $openMenus.length !== 0 ) {
