@@ -1,7 +1,7 @@
 /*!
  * Web Experience Toolkit (WET) / Boîte à outils de l'expérience Web (BOEW)
  * wet-boew.github.io/wet-boew/License-en.html / wet-boew.github.io/wet-boew/Licence-fr.html
- * v4.0.0-b2-development - 2013-12-18
+ * v4.0.0-b2-development - 2013-12-20
  *
  *//*! Modernizr (Custom Build) | MIT & BSD */
 /*
@@ -169,6 +169,7 @@ wb.i18nDict = {
 	infoFilt: "(Gefiltreer _MAX_ Totaal inskrywings)",
 	info1000: ",",
 	lenMenu: "Wys _MENU_ inskrywings",
+	filter: "Filter artikels",
 	/* Geomap */
 	"geo-mapctrl": "@geo-mapctrl@",
 	"geo-zmin": "Zoom in",

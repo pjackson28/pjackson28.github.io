@@ -1,7 +1,7 @@
 /*!
  * Web Experience Toolkit (WET) / Boîte à outils de l'expérience Web (BOEW)
  * wet-boew.github.io/wet-boew/License-en.html / wet-boew.github.io/wet-boew/Licence-fr.html
- * v4.0.0-b2-development - 2013-12-18
+ * v4.0.0-b2-development - 2013-12-20
  *
  *//**
  * @title WET-BOEW JQuery Helper Methods
@@ -477,12 +477,9 @@ var pluginName = "wb-calevt",
 		containerId = $elm.data( "calevtSrc" );
 		$containerId = $( "#" + containerId ).addClass( calendarSelector );
 
-		$document.on( "displayed.wb-cal", "#" + containerId, function( event, year, month, days, day ) {
+		$document.on( "displayed.wb-cal", "#" + containerId, function( event, year, month, days ) {
 			addEvents( year, month, days, containerId, events.list );
 			showOnlyEventsFor( year, month, containerId );
-			$( event.currentTarget )
-				.find( ".cal-evt" + ( day === 1 ? ":first" : ":last" ) )
-					.trigger( "setfocus.wb" );
 		});
 		$document.trigger( "create.wb-cal", [
 				containerId,
@@ -877,10 +874,6 @@ $document.on( "timerpoke.wb " + initEvent, selector, function() {
 	return true;
 });
 
-$document.on( "displayed.wb-cal", calendarSelector, function( event, year, month, $days, day ) {
-	$( event.currentTarget ).find( ".cal-index-" + day ).trigger( "setfocus.wb" );
-});
-
 // Add the timer poke to initialize the plugin
 wb.add( selector );
 
@@ -909,7 +902,9 @@ var $document = wb.doc,
 	 * Creates a calendar instance
 	 * @method create
 	 */
-	create = function( event, calendarId, year, month, shownav, mindate, maxdate, day ) {
+	create = function( event, calendarId, year, month, shownav, mindate,
+		maxdate, day, ariaControls, ariaLabelledBy ) {
+
 		var calendar = document.getElementById( calendarId ),
 			$calendar = $( calendar ),
 			objCalendarId = "#cal-" + calendarId + "-cnt",
@@ -935,7 +930,16 @@ var $document = wb.doc,
 			};
 		}
 
-		$calendar.addClass( "cal-cnt" );
+		$calendar
+			.addClass( "cal-cnt" )
+			.attr( "id", calendarId );
+
+		if ( ariaLabelledBy ) {
+			$calendar.attr({
+				"aria-controls": ariaControls,
+				"aria-labelledby": ariaLabelledBy
+			});
+		}
 
 		// Converts min and max date from string to date objects
 		if ( typeof mindate === "string" ) {
@@ -3239,15 +3243,15 @@ var pluginName = "wb-menu",
 	initedClass = pluginName + "-inited",
 	initEvent = "wb-init" + selector,
 	breadcrumb = document.getElementById( "wb-bc" ),
-	displayEvent = "disp" + selector,
 	navCurrentEvent = "navcurr.wb",
+	focusEvent = "setfocus.wb",
 	i18n, i18nText,
 	$document = wb.doc,
 
 	// Used for half second delay on showing/hiding menus because of mouse hover
 	hoverDelay = 500,
 	menuCount = 0,
-	globalTimeout = {},
+	globalTimeout,
 
 	/**
 	 * Lets set some aria states and attributes
@@ -3430,7 +3434,7 @@ var pluginName = "wb-menu",
 			search = document.getElementById( "wb-srch" ),
 			panel = "",
 			allProperties = [],
-			$panel, $navCurr;
+			$panel, $navCurr, $menuItem, len, i;
 
 		/*
 		 * Build the mobile panel
@@ -3469,9 +3473,7 @@ var pluginName = "wb-menu",
 				if ( $secnav.find( ".wb-navcurr" ).length === 0 ) {
 
 					// Trigger the navcurrent plugin
-					setTimeout(function() {
-						$secnav.trigger( navCurrentEvent, breadcrumb );
-					}, 1 );
+					$secnav.trigger( navCurrentEvent, breadcrumb );
 				}
 			}
 
@@ -3495,9 +3497,7 @@ var pluginName = "wb-menu",
 				if ( $info.find( ".wb-navcurr" ).length === 0 ) {
 
 					// Trigger the navcurrent plugin
-					setTimeout(function() {
-						$info.trigger( navCurrentEvent, breadcrumb );
-					}, 1 );
+					$info.trigger( navCurrentEvent, breadcrumb );
 				}
 			}
 			
@@ -3544,14 +3544,29 @@ var pluginName = "wb-menu",
 		// Trigger the navcurrent plugin
 		setTimeout(function() {
 			$elm.trigger( navCurrentEvent, breadcrumb );
-			$panel.trigger( navCurrentEvent, breadcrumb );
+			$panel.find( "#sm-pnl" ).trigger( navCurrentEvent, breadcrumb );
 
-			// Open up the first menu with wb-navcurr
-			$navCurr = $panel.find( ".wb-navcurr" ).first();
-			if ( !$navCurr.hasClass( ".mb-item" ) ) {
-				$navCurr = $navCurr.closest( "details" ).children( "summary" );
+			// Open up each menu with the wb-navcurr class
+			$navCurr = $panel.find( ".wb-navcurr" );
+			len = $navCurr.length;
+			for ( i = 0; i !== len; i += 1 ) {
+				$menuItem = $navCurr.eq( i );
+
+				// If not at the top level, check to see if the parent menu
+				// link has the wb-navcurr class already. If not, then
+				// click on the parent menu item.
+				if ( !$menuItem.hasClass( ".mb-item" ) ) {
+					$menuItem = $menuItem
+									.closest( "details" )
+										.children( "summary" )
+											.addClass( "wb-navcurr" );
+				}
+
+				// Only click on the menu item if it has a submenu
+				if ( $menuItem.attr( "aria-haspopup" ) === "true" ) {
+					$menuItem.trigger( "click" );
+				}
 			}
-			$navCurr.trigger( "click" );
 		}, 1 );
 	},
 
@@ -3569,43 +3584,7 @@ var pluginName = "wb-menu",
 		index = index === menuItemsLength ? 0 : index === -1 ? menuItemsLength - 1 : index;
 
 		// Move to the new menu item
-		$menuItems.eq( index ).trigger( "setfocus.wb" );
-	},
-
-	/**
-	 * @method menuSelect
-	 * @param {jQuery object} $goTo The element to select
-	 * @param {string} special Special action to take (if any)
-	 */
-	menuSelect = function( $goTo, special ) {
-		$goTo.trigger( "setfocus.wb" );
-		if ( special || ( $goTo.hasClass( "item" ) && !$goTo.attr( "aria-haspopup" ) ) ) {
-			menuReset( $goTo.closest( selector ), true, special );
-		}
-	},
-
-	/**
-	 * @method menuReset
-	 * @param {jQuery DOM element} $elm The plugin element
-	 * @param {boolean} cancelDelay Whether or not to delay the closing of the menus (false by default)
-	 * @param {boolean} keepActive Whether or not to leave the active class alone (false by default)
-	 */
-	menuReset = function( $elm, cancelDelay, keepActive ) {
-		var id = $elm.attr( "id" ),
-			$active = $elm.find( ".active" );
-
-		// Clear any timeouts for open/closing menus
-		clearTimeout( globalTimeout[ id ] );
-
-		if ( cancelDelay ) {
-			menuClose( $active, !keepActive );
-		} else {
-
-			// Delay the closing of the menus
-			globalTimeout[ id ] = setTimeout( function() {
-				menuClose( $active, true );
-			}, hoverDelay );
-		}
+		$menuItems.eq( index ).trigger( focusEvent );
 	},
 
 	/**
@@ -3629,24 +3608,22 @@ var pluginName = "wb-menu",
 	},
 
 	/**
-	 * @method onDisplay
+	 * @method menuDisplay
 	 * @param {jQuery DOM element} $elm The plugin element
-	 * @param {jQuery event} event The current event
+	 * @param {jQuery event} menu The menu to display
 	 */
-	onDisplay = function( $elm, event ) {
-		var menuItem = event.ident,
-			menuLink = menuItem.children( "a" );
+	menuDisplay = function( $elm, menu ) {
+		var menuLink = menu.children( "a" );
 
-		// Lets reset the menus with no delay to ensure no overlap
 		menuClose( $elm.find( ".active" ), true );
 
 		// Ignore if doesn't have a submenu
 		if ( menuLink.attr( "aria-haspopup" ) === "true" ) {
 
 			// Add the open state classes
-			menuItem
+			menu
 				.addClass( "active sm-open" )
-				.find( ".sm" )
+				.children( ".sm" )
 					.addClass( "open" )
 					.attr({
 						"aria-hidden": "false",
@@ -3669,7 +3646,7 @@ var pluginName = "wb-menu",
 		for ( i = 0; i !== len; i += 1 ) {
 			link = links[ i ];
 			if ( link.innerHTML.charAt( 0 ) === keyChar ) {
-				menuSelect( $( link ) );
+				$( link ).trigger( focusEvent );
 				return true;
 			}
 		}
@@ -3678,7 +3655,7 @@ var pluginName = "wb-menu",
 	};
 
 // Bind the events of the plugin
-$document.on( "timerpoke.wb " + initEvent + " ajax-fetched.wb " + displayEvent, selector, function( event ) {
+$document.on( "timerpoke.wb " + initEvent + " ajax-fetched.wb", selector, function( event ) {
 
 	var elm = event.target,
 		eventType = event.type,
@@ -3701,16 +3678,6 @@ $document.on( "timerpoke.wb " + initEvent + " ajax-fetched.wb " + displayEvent, 
 			init( $elm );
 		}
 		break;
-
-	case "disp":
-		if ( event.cancelDelay ) {
-			onDisplay( $elm, event );
-		} else {
-			globalTimeout[ $elm.attr( "id" ) ] = setTimeout( function() {
-				onDisplay( $elm, event );
-			}, hoverDelay );
-		}
-		break;
 	}
 
 	/*
@@ -3721,11 +3688,16 @@ $document.on( "timerpoke.wb " + initEvent + " ajax-fetched.wb " + displayEvent, 
 });
 
 $document.on( "mouseleave", selector + " .menu", function( event ) {
-	menuReset( $( event.currentTarget ).closest( ".wb-menu" ) );
+	// Clear the timeout for open/closing menus
+	clearTimeout( globalTimeout );
+
+	globalTimeout = setTimeout( function() {
+		menuClose( $( event.currentTarget ).find( ".active" ), true );
+	}, hoverDelay );
 });
 
-// Touchscreen "touches" on menu items should close the sub-menu if it is open
-$document.on( "touchstart click", selector + " [aria-haspopup]", function( event ) {
+// Touchscreen "touches" on menubar items should close the submenu if it is open
+$document.on( "touchstart click", selector + " .item[aria-haspopup=true]", function( event ) {
 	var isTouchstart = event.type === "touchstart",
 		$this, $parent;
 
@@ -3746,6 +3718,15 @@ $document.on( "touchstart click", selector + " [aria-haspopup]", function( event
 	}
 });
 
+// Click on menu items with submenus should open and close those submenus
+$document.on( "click", selector + " [role=menu] [aria-haspopup=true]", function( event ) {
+	var submenu = event.currentTarget.parentNode.getElementsByTagName( "ul" )[ 0 ],
+		isOpen = submenu.getAttribute( "aria-hidden" ) === "false";
+
+	submenu.setAttribute( "aria-expanded", !isOpen );
+	submenu.setAttribute( "aria-hidden", isOpen );
+});
+
 // Clicks and touches outside of menus should close any open menus
 $document.on( "click touchstart", function( event ) {
 	var $openMenus;
@@ -3763,18 +3744,18 @@ $document.on( "click touchstart", function( event ) {
 
 $document.on( "mouseover focusin", selector + " .item", function(event) {
 	var $elm = $( event.currentTarget ),
-		$container = $elm.closest( selector );
+		$parent = $elm.parent(),
+		$container = $parent.closest( selector );
 
-	if ( $container.length !== 0 ) {
+	// Clear the timeout for open/closing menus
+	clearTimeout( globalTimeout );
 
-		// Clear any timeouts for open/closing menus
-		clearTimeout( globalTimeout[ $container.attr( "id" ) ] );
-
-		$container.trigger({
-			type: displayEvent,
-			ident: $elm.parent(),
-			cancelDelay: event.type === "focusin"
-		});
+	if ( event.type === "focusin" ) {
+		menuDisplay( $container, $parent );
+	} else {
+		globalTimeout = setTimeout( function() {
+			menuDisplay( $container, $parent );
+		}, hoverDelay );
 	}
 });
 
@@ -3788,16 +3769,12 @@ $document.on( "keydown", selector + " [role=menuitem]", function( event ) {
 		hasPopup = $elm.attr( "aria-haspopup" ) === "true",
 		$menu = $elm.parent().closest( "[role^='menu']" ),
 		inMenuBar = $menu.attr( "role" ) === "menubar",
-		menuSelector = "[href=#" + $menu.attr( "id" ) + "]",
-		$menuLink = $menu.parent().find( menuSelector ),
-		$container = $menu.closest( selector ),
-		$parent, $subMenu, result;
+		$menuLink, $parentMenu, $parent, $subMenu, result,
+		menuitemSelector, isOpen;
 
-	// Tab key
+	// Tab key = Hide all sub-menus
 	if ( which === 9 ) {
-
-		// Hide all sub-menus
-		menuReset( $container, true );
+		menuClose( $( selector + " .active" ), true );
 		
 	// Menu item is within a menu bar
 	} else if ( inMenuBar ) {
@@ -3819,80 +3796,136 @@ $document.on( "keydown", selector + " [role=menuitem]", function( event ) {
 
 			// Open the submenu if it is not already open
 			if ( !$subMenu.hasClass( "open" ) ) {
-				$container.trigger({
-					type: displayEvent,
-					ident: $parent,
-					cancelDelay: true
-				});
+				menuDisplay( $menu.closest( selector ), $parent );
 			}
 
-			menuSelect( $subMenu.find( "a" ).first() );
+			// Set focus on the first submenu item
+			$subMenu.find( "a:first" ).trigger( focusEvent );
 		
 		// Hide sub-menus and set focus
 		} else if ( which === 27 ) {
 			event.preventDefault();
-			menuReset( $container, true, true );
+			menuClose( $menu.closest( selector ).find( ".active" ), false );
 
 		// Letters only
 		} else if ( which > 64 && which < 91 ) {
 			event.preventDefault();
 			selectByLetter(
 				which,
-				$elm.parent().find( "ul a" ).get()
+				$elm.parent().find( "> ul > li > a" ).get()
 			);
 		}
 
 	// Menu item is not within a menu bar
 	} else {
-
+		menuitemSelector = "> a, > details > summary";
+	
 		// Up / down arrow = Previous / next menu item
 		if ( which === 38 || which === 40 ) {
 			event.preventDefault();
 			menuIncrement(
-				$menu.children( "li" ).find( "> a, > details > summary" ),
+				$menu.children( "li" ).find( menuitemSelector ),
 				$elm,
 				which === 38 ? -1 : 1
 			);
 
-		// Enter sub-menu
+		// Enter or right arrow with a submenu
 		} else if ( hasPopup && ( which === 13 || which === 39 ) ) {
-			event.preventDefault();
-			
-			// Do something
+			$parent = $elm.parent();
 
-		// Escape, left / right arrow
-		} else if ( which === 27 || which === 37 || which === 39 ) {
-			event.preventDefault();
-
-			// Temporary: Escape key (assumes parent menu is menu bar)
-			if ( which === 27 ) {
-				menuSelect( $menuLink, "reset" );
-			
-			// Temporary: Left / right key (assumes parent is menu bar)
-			} else {
-				menuIncrement(
-					$menu.parent().closest( "[role^='menu']" ).find( "> li > a" ),
-					$menuLink,
-					which === 37 ? -1 : 1
-				);
+			if ( which === 39 ) {
+				event.preventDefault();
 			}
 
-		// Temporary: Letters only (assumes links and only one level)
+			// If the menu item is a summary element
+			if ( elm.nodeName.toLowerCase( "summary" ) ) {
+				isOpen = !!$parent.attr( "open" );
+
+				// Ensure the menu is opened or stays open
+				if ( ( !isOpen && which === 39 ) || ( isOpen && which === 13 ) ) {
+					$elm.trigger( "click" );
+				}
+
+				// Update the WAI-ARIA states and move focus to
+				// the first submenu item
+				$parent.children( "ul" )
+					.attr({
+						"aria-expanded": "true",
+						"aria-hidden": "false"
+					})
+					.find( "[role=menuitem]:first" )
+						.trigger( "setfocus.wb" );
+			}
+
+		// Escape, left / right arrow without a submenu
+		} else if ( which === 27 || which === 37 || which === 39 ) {
+			$parent = $menu.parent();
+			$parentMenu = $parent.closest( "[role^='menu']" );
+			if ( which === 37 || which === 39 ) {
+				event.preventDefault();
+			}
+
+			// If the parent menu is a menubar
+			if ( $parentMenu.attr( "role" ) === "menubar" ) {
+				$menuLink = $parent.children( "[href=#" + $menu.attr( "id" ) + "]" );
+			
+				// Escape key = Close menu and return to menu bar item
+				if ( which === 27 ) {
+					event.preventDefault();
+					$menuLink.trigger( focusEvent );
+					
+					// Close the menu but keep the referring link active
+					setTimeout(function() {
+						menuClose( $menuLink.parent(), false );
+					}, 1 );
+				
+				// Left / right key = Next / previous menu bar item
+				} else if ( $parentMenu.attr( "role" ) === "menubar" ) {
+					menuIncrement(
+						$parentMenu.find( "> li > a" ),
+						$menuLink,
+						which === 37 ? -1 : 1
+					);
+				}
+				
+			// Escape or left arrow: Go up a level if there is a higher-level
+			// menu or close the current submenu if there isn't
+			} else if ( which !== 39 ) {
+				$subMenu = $parentMenu.length !== 0 ? $menu : $elm;
+
+				// There is a higher-level menu
+				if ( $parentMenu.length !== 0 ) {
+					event.preventDefault();
+					$menu.closest( "li" )
+						.find( menuitemSelector )
+							.trigger( "click" )
+							.trigger( "setfocus.wb" );
+
+				// No higher-level menu but the current submenu is open
+				} else if ( $elm.parent().children( "ul" ).attr( "aria-hidden" ) === "false" ) {
+					event.preventDefault();
+					$elm
+						.trigger( "click" )
+						.trigger( "setfocus.wb" );
+				}
+			}
+
+		// Select a menu item in the current menu by the first letter
 		} else if ( which > 64 && which < 91 ) {
 			event.preventDefault();
-			$parent = $elm.parent();
+			$parent = $elm.closest( "li" );
 
 			// Try to find a match in the next siblings
 			result = selectByLetter(
 				which,
-				$parent.nextAll().find( "a" ).get()
+				$parent.nextAll().find( menuitemSelector ).get()
 			);
 
 			// If couldn't find a match, try the previous siblings
 			if ( !result ) {
 				result = selectByLetter(
 					which,
-					$parent.prevAll().find( "a" ).get()
+					$parent.prevAll().find( menuitemSelector ).get()
 				);
 			}
 		}
@@ -4294,7 +4327,7 @@ var pluginName = "wb-mltmd",
 			return this.object.pauseVideo();
 		case "getPaused":
 			state = this.object.getPlayerState();
-			return state === -1 || state === 0 || state === 2;
+			return state === -1 || state === 0 || state === 2 || state === 5;
 		case "getPlayed":
 			return this.object.getPlayerState() > -1;
 		case "getEnded":
@@ -4330,10 +4363,14 @@ var pluginName = "wb-mltmd",
 		case "setCaptionsVisible":
 			if ( args ) {
 				$( this).addClass( captionClass );
-				this.object.setOption( "cc", "reload", true );
+				if ( this.object.getOptions().length > 0 ) {
+					this.object.setOption( "captions", "track", this.object.getOption( "captions", "tracklist" )[ 0 ] );
+				}
 			} else {
 				$( this ).removeClass( captionClass );
-				this.object.setOption( "cc", "track", {} );
+				if ( this.object.getOptions().length > 0 ) {
+					this.object.setOption( "captions", "track", {} );
+				}
 			}
 			$player.trigger( "ccvischange" );
 		}
@@ -4353,8 +4390,11 @@ var pluginName = "wb-mltmd",
 
 		switch ( event.data ) {
 		case null:
-			$target.trigger( "durationchange" );
 			$target.trigger( "canplay" );
+			break;
+		case -1:
+			event.target.unMute();
+			$target.trigger( "durationchange" );
 			break;
 		case 0:
 			$target.trigger( "ended" );
@@ -4370,7 +4410,6 @@ var pluginName = "wb-mltmd",
 			target.timeline = clearInterval( target.timeline );
 			break;
 		case 3:
-			$target.trigger( "waiting" );
 			target.timeline = clearInterval( target.timeline );
 			break;
 		}
@@ -4504,11 +4543,12 @@ $document.on( youtubeEvent, selector, function() {
 		videoId: $this.data( "youtube" ),
 		playerVars: {
 			autoplay: 0,
-			controls: 0,
+			controls: 1,
 			origin: wb.pageUrlParts.host,
 			modestbranding: 1,
 			rel: 0,
 			showinfo: 0,
+			html5: 1,
 			cc_load_policy: 1
 		},
 		events: {
@@ -4517,8 +4557,10 @@ $document.on( youtubeEvent, selector, function() {
 				youTubeEvents( event );
 			},
 			onStateChange: youTubeEvents,
-			onApiChange: function( event ) {
-				event.target.setOption( "cc", "track", {} );
+			onApiChange: function() {
+				//If captions were enabled before the module was ready, re-enable them
+				var t = $this.get( 0 );
+				t.player( "setCaptionsVisible", t.player( "getCaptionsVisible" ) );
 			}
 		}
 	});
@@ -4534,7 +4576,7 @@ $document.on( youtubeEvent, selector, function() {
 
 	$this.data( "properties", data );
 	$window.on( "resize", onResize );
-	$this.trigger( renderUIEvent, "video" );
+	$this.trigger( renderUIEvent, "youtube" );
 });
 
 /*
@@ -4576,13 +4618,12 @@ $document.on( renderUIEvent, selector, function( event, type ) {
 		captionsUrl = wb.getUrlParts( data.captions ),
 		currentUrl = wb.getUrlParts( window.location.href ),
 		$media = $this.find( "video, audio, iframe, object" ),
-		$player;
+		$player, $overlay;
 
 	$media.after( window.tmpl( $this.data( "template" ), data ) );
-	if ( type === "video" ) {
-		$media.next( ".display" ).append( $media );
-	} else {
-		$media.next( ".display" ).remove();
+	$overlay = $media.next().find( ".wb-mm-ovrly" ).after( $media );
+	if ( type !== "video" ) {
+		$overlay.remove();
 	}
 
 	$player = $( "#" + data.mId );
@@ -4823,8 +4864,14 @@ $document.on( "progress", selector, function( event ) {
 $document.on( resizeEvent, selector, function( event ) {
 	var $player = $( event.target ),
 		height = $player.attr( "height" ),
-		width = $player.attr( "width" );
-	$player.attr( "style", "height:" + Math.round( $player.width() * height / width ) + "px" );
+		width = $player.attr( "width" ),
+		newHeight = Math.round( $player.width() * height / width );
+
+	//TODO: Remove this when captions works in chromeless api with controls
+	if ( $player.is( "iframe") ) {
+		newHeight += 30;
+	}
+	$player.attr( "style", "height:" + newHeight + "px" );
 });
 
 wb.add( selector );
@@ -4945,10 +4992,8 @@ var $document = wb.doc,
 
 		if ( match ) {
 			link.className += " " + navClass;
-			if ( menu.id === "mb-pnl" ) {
-				link.parentNode.parentNode.parentNode.parentNode.getElementsByTagName( "summary" )[ 0 ].className += " " + navClass;
-			} else if ( menu.className.indexOf( "wb-menu" ) !== -1 && link.className.indexOf( "item" ) === -1 ) {
-				link.parentNode.parentNode.parentNode.getElementsByTagName( "a" )[ 0 ].className += " " + navClass;
+			if ( menu.className.indexOf( "wb-menu" ) !== -1 && link.className.indexOf( "item" ) === -1 ) {
+				$( link ).closest( ".sm" ).parent().children( "a" ).addClass( navClass );
 			}
 		}
 	};
@@ -5100,7 +5145,9 @@ $document.on( "timerpoke.wb " + initEvent + " keydown open" + selector +
 
 		// Escape key
 		case 27:
-			closeOverlay( overlayId, false, true );
+			if ( !event.isDefaultPrevented() ) {
+				closeOverlay( overlayId, false, true );
+			}
 			break;
 		}
 	}
@@ -6112,7 +6159,7 @@ var pluginName = "wb-tables",
 					sLengthMenu: i18n( "lenMenu" ),
 					sLoadingRecords: i18n( "load" ),
 					sProcessing: i18n( "process" ),
-					sSearch: i18n( "srch" ),
+					sSearch: i18n( "filter" ),
 					sZeroRecords: i18n( "infoEmpty" )
 				};
 			}
@@ -6942,6 +6989,8 @@ var pluginName = "wb-toggle",
 					tab.setAttribute( "role", "tab" );
 					tab.setAttribute( "aria-selected", isOpen );
 					tab.setAttribute( "tabindex", isOpen ? "0" : "-1" );
+					tab.setAttribute( "aria-posinset", i + 1 );
+					tab.setAttribute( "aria-setsize", len );
 					
 					panel.setAttribute( "role", "tabpanel" );
 					panel.setAttribute( "aria-labelledby", tab.getAttribute( "id" ) );
